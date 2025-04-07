@@ -1,0 +1,55 @@
+// schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Game {
+  id           String   @id
+  matchType    String // "singles" or "doubles" - Make sure this is being set when game is created
+  sport        String @default("badminton")
+  playerNames  Json
+  createdAt    DateTime @default(now())
+  points       Point[]  // Relation to Point model
+  scoreA       Int      @default(0)
+  scoreB       Int      @default(0)
+  setScoresA   Json     @default("[0, 0, 0]")
+  setScoresB   Json     @default("[0, 0, 0]")
+  currentSet   Int      @default(0)
+  gameEnded    Boolean  @default(false)
+  firstServer  Int      // 0 for Team A start, 1 for Team B start
+  startingSide String   // "Left" or "Right" (for Team A)
+
+  // Add state relevant at the start of the current score situation
+  // These might be useful if you want to avoid recalculating from history
+  // but can also be derived. Let's stick to deriving from Point history for now.
+  // currentServingTeam String? // "A" or "B"
+  // currentServerIndexA Int?    // 0 or 1 for doubles
+  // currentServerIndexB Int?    // 0 or 1 for doubles
+  // playerPositionsA Json?   // e.g., "[0, 1]" (player 0 left, player 1 right)
+  // playerPositionsB Json?   // e.g., "[0, 1]"
+}
+
+model Point {
+  id        String   @id @default(cuid())
+  gameId    String
+  game      Game     @relation(fields: [gameId], references: [id])
+  scoredBy  String   // "A" or "B"
+  scoreA    Int      // Score after this point for Team A
+  scoreB    Int      // Score after this point for Team B
+  setNumber Int      // Which set this point belongs to (0, 1, 2)
+  timestamp DateTime @default(now())
+
+  // State *before* this point was played (or leading to this score)
+  servingTeam String   // "A" or "B" - Who served to start this rally
+  serverIndex Int?     // Player index (0 or 1) on the serving team who served (null if singles or not applicable)
+  // Store positions *relative to their side* [left_player_index, right_player_index]
+  // These reflect the positions *before* the point was played
+  playerPositionsA Json? // e.g., "[0, 1]" or "[1, 0]" or "[0]"
+  playerPositionsB Json? // e.g., "[0, 1]" or "[1, 0]" or "[0]"
+}
